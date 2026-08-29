@@ -291,12 +291,15 @@ svg.chart{width:100%; height:auto; display:block;}
           <div class="field"><label for="wDate">日期</label><input type="date" id="wDate"></div>
           <div class="field"><label for="wKg">體重 (kg)</label><input type="number" id="wKg" step="0.1" placeholder="例如 68.4"></div>
         </div>
-        <button class="toggle-more" id="toggleInbody" type="button">+ 新增 InBody 數據（體脂率／骨骼肌量／內臟脂肪，選填）</button>
+        <button class="toggle-more" id="toggleInbody" type="button">+ 新增 InBody 數據（體脂率／骨骼肌量／體脂肪重／內臟脂肪，選填）</button>
         <div id="inbodyFields" style="display:none; margin-top:10px;">
           <div class="field-row">
-            <div class="field"><label for="wFat">體脂率 (%)</label><input type="number" id="wFat" step="0.1"></div>
-            <div class="field"><label for="wMuscle">骨骼肌量 (kg)</label><input type="number" id="wMuscle" step="0.1"></div>
-            <div class="field"><label for="wVisc">內臟脂肪等級</label><input type="number" id="wVisc" step="1"></div>
+            <div class="field"><label for="wFat">體脂率 PBF (%)</label><input type="number" id="wFat" step="0.1" inputmode="decimal"></div>
+            <div class="field"><label for="wMuscle">骨骼肌量 SMM (kg)</label><input type="number" id="wMuscle" step="0.1" inputmode="decimal"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="wFatMass">體脂肪重 (kg)</label><input type="number" id="wFatMass" step="0.1" inputmode="decimal"></div>
+            <div class="field"><label for="wVisc">內臟脂肪</label><input type="number" id="wVisc" step="0.1" inputmode="decimal" placeholder="等級(如8)或面積cm²(如147.5)都可以"></div>
           </div>
         </div>
         <div class="field"><label for="wNote">備註（選填）</label><input type="text" id="wNote" placeholder="例如：生理期、聚餐後、感冒中"></div>
@@ -978,7 +981,8 @@ function renderWeightView(){
       $('wDate').value = w.date; $('wKg').value = w.weightKg;
       $('wNote').value = w.note || '';
       $('wFat').value = w.bodyFatPct ?? ''; $('wMuscle').value = w.muscleMassKg ?? ''; $('wVisc').value = w.visceralFat ?? '';
-      if(w.bodyFatPct!=null || w.muscleMassKg!=null || w.visceralFat!=null) $('inbodyFields').style.display = 'block';
+      $('wFatMass').value = w.fatMassKg ?? '';
+      if(w.bodyFatPct!=null || w.muscleMassKg!=null || w.visceralFat!=null || w.fatMassKg!=null) $('inbodyFields').style.display = 'block';
       $('weightMsg').innerHTML = `<div class="msg info">正在修正 ${date} 的紀錄，改完數字後按「儲存」即可覆蓋</div>`;
       window.scrollTo({top:0, behavior:'smooth'});
     };
@@ -1006,15 +1010,16 @@ $('saveWeightBtn').onclick = async () => {
   const weightKg = parseFloat($('wKg').value);
   if(!weightKg || weightKg<=0){ $('weightMsg').innerHTML = '<div class="msg error">請輸入有效的體重數字</div>'; return; }
   const doc = { date, weightKg, note: $('wNote').value || null, updatedAt: new Date().toISOString() };
-  const fat = parseFloat($('wFat').value), muscle = parseFloat($('wMuscle').value), visc = parseFloat($('wVisc').value);
+  const fat = parseFloat($('wFat').value), muscle = parseFloat($('wMuscle').value), visc = parseFloat($('wVisc').value), fatMass = parseFloat($('wFatMass').value);
   if(!isNaN(fat)) doc.bodyFatPct = fat;
   if(!isNaN(muscle)) doc.muscleMassKg = muscle;
   if(!isNaN(visc)) doc.visceralFat = visc;
+  if(!isNaN(fatMass)) doc.fatMassKg = fatMass;
   try{
     await saveWeight(doc);
     $('weightMsg').innerHTML = '<div class="msg info">已儲存</div>';
     $('wDate').value = todayStr();
-    $('wKg').value=''; $('wNote').value=''; $('wFat').value=''; $('wMuscle').value=''; $('wVisc').value='';
+    $('wKg').value=''; $('wNote').value=''; $('wFat').value=''; $('wMuscle').value=''; $('wVisc').value=''; $('wFatMass').value='';
     $('inbodyFields').style.display = 'none';
   }catch(e){ $('weightMsg').innerHTML = '<div class="msg error">儲存失敗，請再試一次</div>'; }
 };
