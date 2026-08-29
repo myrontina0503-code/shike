@@ -784,7 +784,17 @@ function bmiOf(weightKg, heightCm){
   const m = heightCm/100;
   return weightKg / (m*m);
 }
-function bmiCategory(bmi){
+function bmiRefLines(age){
+  const elderly = age != null && age >= 65;
+  return elderly ? [22, 27] : [18.5, 24, 27];
+}
+function bmiCategory(bmi, age){
+  const elderly = age != null && age >= 65;
+  if(elderly){
+    if(bmi < 22) return {label:'過輕', tone:'warn'};
+    if(bmi < 27) return {label:'健康範圍（65歲以上）', tone:'good'};
+    return {label:'肥胖', tone:'over'};
+  }
   if(bmi < 18.5) return {label:'過輕', tone:'warn'};
   if(bmi < 24) return {label:'正常範圍', tone:'good'};
   if(bmi < 27) return {label:'過重', tone:'warn'};
@@ -792,24 +802,27 @@ function bmiCategory(bmi){
 }
 function renderBmiSection(latest){
   const heightCm = state.goal && state.goal.heightCm;
+  const age = state.goal && state.goal.age;
   if(!heightCm || !latest){
     $('bmiNow').innerHTML = '';
     $('bmiChart').innerHTML = `<div class="empty">${!latest ? '先記錄體重後即可顯示 BMI' : '請先到「目標」頁面填寫身高'}</div>`;
     return;
   }
   const nowBmi = bmiOf(latest.weightKg, heightCm);
-  const cat = bmiCategory(nowBmi);
+  const cat = bmiCategory(nowBmi, age);
+  const targetBmi = state.goal && state.goal.targetWeightKg ? bmiOf(state.goal.targetWeightKg, heightCm) : null;
   $('bmiNow').innerHTML = `
     <div style="text-align:right;">
       <div class="num" style="font-size:24px; font-weight:700; line-height:1.1;">${nowBmi.toFixed(1)}</div>
       <span class="pill ${cat.tone}">${cat.label}</span>
+      ${targetBmi ? `<div class="hint" style="margin-top:3px;">目標 BMI ${targetBmi.toFixed(1)}</div>` : ''}
     </div>`;
 
   const data = state.weights.slice(-90).map(w => ({date:w.date, bmi: bmiOf(w.weightKg, heightCm)}));
   if(data.length < 2){ $('bmiChart').innerHTML = '<div class="empty">再累積幾筆體重紀錄即可看到趨勢</div>'; return; }
   const W=640, H=170, PAD=28;
-  const refLines = [18.5, 24, 27];
-  const ys = data.map(d=>d.bmi).concat(refLines);
+  const refLines = bmiRefLines(age);
+  const ys = data.map(d=>d.bmi).concat(refLines).concat(targetBmi != null ? [targetBmi] : []);
   let min=Math.min(...ys), max=Math.max(...ys); if(min===max){min-=1;max+=1;}
   const pad=(max-min)*0.12; min-=pad; max+=pad;
   const x = i => PAD + (data.length<=1?0:i*(W-2*PAD)/(data.length-1));
@@ -818,16 +831,23 @@ function renderBmiSection(latest){
   const refs = refLines.filter(v => v>min && v<max).map(v => `
     <line x1="${PAD}" y1="${y(v)}" x2="${W-PAD}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
     <text x="${W-PAD}" y="${y(v)-3}" font-size="9.5" fill="var(--ink-faint)" font-family="IBM Plex Mono" text-anchor="end">${v}</text>`).join('');
+  const targetLine = targetBmi != null && targetBmi>min && targetBmi<max ? `
+    <line x1="${PAD}" y1="${y(targetBmi)}" x2="${W-PAD}" y2="${y(targetBmi)}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="${PAD}" y="${y(targetBmi)-3}" font-size="9.5" fill="var(--accent-ink)" font-family="IBM Plex Mono">目標 ${targetBmi.toFixed(1)}</text>` : '';
   const firstLabel = `<text x="${PAD}" y="${H-6}" font-size="10" fill="var(--ink-faint)" font-family="IBM Plex Mono">${fmtDate(data[0].date)}</text>`;
   const lastLabel = `<text x="${W-PAD}" y="${H-6}" font-size="10" fill="var(--ink-faint)" font-family="IBM Plex Mono" text-anchor="end">${fmtDate(data[data.length-1].date)}</text>`;
   $('bmiChart').innerHTML = `
     <svg class="chart" viewBox="0 0 ${W} ${H}">
       <line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="var(--line)"/>
       ${refs}
+      ${targetLine}
       <path d="${path}" fill="none" stroke="var(--teal)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
       ${firstLabel}${lastLabel}
     </svg>
-    <p class="hint" style="margin-top:4px;">虛線由下至上為 18.5／24／27，台灣衛福部的過輕／正常／過重分界</p>`;
+    <p class="hint" style="margin-top:4px;">${age!=null && age>=65
+      ? '灰色虛線 22／27：國健署針對 65 歲以上長者建議的健康範圍（較寬鬆，避免肌少症與骨折風險）'
+      : '灰色虛線 18.5／24／27：台灣衛福部國健署的過輕／正常／過重分界'
+    }${targetBmi!=null ? '；橘色虛線是依你的目標體重換算出的目標 BMI' : ''}</p>`;
 }
 
 function renderWeightChart(){
