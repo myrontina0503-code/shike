@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>食刻</title>
+<meta name="description" content="記錄飲食與體重、追蹤 BMI 與目標達成的個人飲食管理工具，資料存在你自己的 Google Drive">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="食刻">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{
+  --bg:#F5F6F2; --surface:#FFFFFF; --surface-2:#EFF1EA;
+  --ink:#1E2A22; --ink-soft:#5B6A5F; --ink-faint:#8B968C;
+  --line:#DFE2D9;
+  --accent:#C0632B; --accent-ink:#8A4319; --accent-soft:#F3E2D3;
+  --teal:#28564F; --teal-soft:#DDE8E4;
+  --good:#3E7D57; --good-soft:#DEEBE1;
+  --warn:#B0812B; --warn-soft:#F1E6D0;
+  --over:#AE3E3E; --over-soft:#F3DEDE;
+  --shadow: 0 1px 2px rgba(30,42,34,.06), 0 8px 24px rgba(30,42,34,.05);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121C17; --surface:#182420; --surface-2:#1E2C26;
+    --ink:#ECEFE9; --ink-soft:#A9B6AC; --ink-faint:#79867C;
+    --line:#2B3A32;
+    --accent:#E28A50; --accent-ink:#F3C69C; --accent-soft:#2E2119;
+    --teal:#7FB0A5; --teal-soft:#1D2E29;
+    --good:#7FC299; --good-soft:#1B2C22;
+    --warn:#E0B15C; --warn-soft:#2E2818;
+    --over:#E38686; --over-soft:#2E1C1C;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121C17; --surface:#182420; --surface-2:#1E2C26;
+  --ink:#ECEFE9; --ink-soft:#A9B6AC; --ink-faint:#79867C;
+  --line:#2B3A32;
+  --accent:#E28A50; --accent-ink:#F3C69C; --accent-soft:#2E2119;
+  --teal:#7FB0A5; --teal-soft:#1D2E29;
+  --good:#7FC299; --good-soft:#1B2C22;
+  --warn:#E0B15C; --warn-soft:#2E2818;
+  --over:#E38686; --over-soft:#2E1C1C;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:'IBM Plex Sans','PingFang TC','Heiti TC',-apple-system,BlinkMacSystemFont,sans-serif;
+  font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:'Fraunces','PingFang TC',serif; text-wrap:balance; margin:0; font-weight:600; letter-spacing:.1px;}
+.num{font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums;}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit; font-size:15px;}
+a{color:inherit;}
+::selection{background:var(--accent-soft); color:var(--accent-ink);}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}
+
+#app{display:flex; min-height:100vh;}
+.rail{
+  width:210px; flex:none; background:var(--surface); border-right:1px solid var(--line);
+  padding:24px 14px; display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100vh;
+}
+.brand{font-family:'Fraunces',serif; font-size:22px; font-weight:700; padding:2px 10px 22px; color:var(--teal); display:flex; align-items:baseline; gap:6px;}
+.brand small{font-family:'IBM Plex Sans',sans-serif; font-size:11px; font-weight:600; letter-spacing:.06em; color:var(--ink-faint); text-transform:uppercase;}
+.navbtn{
+  display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; border:none;
+  background:transparent; color:var(--ink-soft); font-size:14px; font-weight:500; text-align:left;
+}
+.navbtn svg{width:18px; height:18px; flex:none;}
+.navbtn.active{background:var(--teal-soft); color:var(--teal); font-weight:600;}
+.navbtn:hover:not(.active){background:var(--surface-2);}
+.rail-foot{margin-top:auto; padding:10px; font-size:11.5px; color:var(--ink-faint); line-height:1.5;}
+
+main{flex:1; min-width:0; padding:28px 32px 100px; max-width:920px; margin:0 auto; width:100%;}
+.view{display:none;}
+.view.active{display:block;}
+.pagehead{margin-bottom:20px;}
+.pagehead h1{font-size:26px;}
+.pagehead p{color:var(--ink-soft); margin:4px 0 0; font-size:13.5px;}
+
+.grid{display:grid; gap:14px;}
+.grid-2{grid-template-columns:1fr 1fr;}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+@media (max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow);}
+.card h2{font-size:15px; color:var(--ink); margin-bottom:2px;}
+.card .hint{font-size:12px; color:var(--ink-faint);}
+
+.stat{display:flex; flex-direction:column; gap:6px;}
+.stat .label{font-size:12px; color:var(--ink-faint); font-weight:600; letter-spacing:.03em; text-transform:uppercase;}
+.stat .value{font-size:28px; font-weight:600;}
+.stat .value .unit{font-size:14px; font-weight:500; color:var(--ink-soft); margin-left:2px;}
+.stat .sub{font-size:12.5px; color:var(--ink-soft);}
+.stat .remain{font-size:13px; font-weight:600; margin-top:2px;}
+
+#encourageBox{display:flex; flex-direction:column; gap:8px; margin-bottom:14px;}
+.encourage-line{
+  display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px;
+  background:var(--accent-soft); color:var(--accent-ink); font-size:13.5px; font-weight:500; line-height:1.4;
+}
+.encourage-line .e-icon{font-size:18px; flex:none;}
+
+.pill{display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;}
+.pill.good{background:var(--good-soft); color:var(--good);}
+.pill.warn{background:var(--warn-soft); color:var(--warn);}
+.pill.over{background:var(--over-soft); color:var(--over);}
+.pill.neutral{background:var(--surface-2); color:var(--ink-soft);}
+.pill.accent{background:var(--accent-soft); color:var(--accent-ink);}
+
+.bar{height:10px; border-radius:999px; background:var(--surface-2); overflow:hidden; position:relative;}
+.bar > i{display:block; height:100%; border-radius:999px; background:var(--accent);}
+
+.btn{border-radius:10px; padding:10px 16px; font-size:14px; font-weight:600; border:1px solid transparent;}
+.btn-primary{background:var(--teal); color:var(--bg);}
+.btn-primary:hover{filter:brightness(1.08);}
+.btn-outline{background:transparent; border-color:var(--line); color:var(--ink);}
+.btn-outline:hover{background:var(--surface-2);}
+.btn-accent{background:var(--accent); color:#fff;}
+.btn[disabled]{opacity:.5; cursor:not-allowed;}
+.btn-block{width:100%;}
+.btn-row{display:flex; gap:10px; flex-wrap:wrap;}
+
+.field{display:flex; flex-direction:column; gap:5px; margin-bottom:12px;}
+.field label{font-size:12.5px; font-weight:600; color:var(--ink-soft);}
+.field .help{font-size:11.5px; color:var(--ink-faint);}
+.field input[type=number],.field input[type=text],.field input[type=date],.field select,.field textarea{
+  padding:9px 11px; border-radius:9px; border:1px solid var(--line); background:var(--surface); color:var(--ink); width:100%;
+}
+.field textarea{resize:vertical; min-height:56px;}
+.field-row{display:flex; gap:10px;}
+.field-row .field{flex:1;}
+.quad-row{display:grid; grid-template-columns:repeat(4,1fr); gap:10px;}
+@media (max-width:480px){.quad-row{grid-template-columns:repeat(2,1fr);}}
+.toggle-more{background:none;border:none;color:var(--teal);font-size:12.5px;font-weight:600;padding:2px 0;text-align:left;}
+
+.divider{height:1px; background:var(--line); margin:16px 0;}
+
+svg.chart{width:100%; height:auto; display:block;}
+.chart-legend{display:flex; gap:16px; margin-top:8px; font-size:12px; color:var(--ink-soft);}
+.chart-legend span{display:inline-flex; align-items:center; gap:6px;}
+.chart-legend i{width:12px; height:2px; display:inline-block;}
+
+.empty{color:var(--ink-faint); font-size:13px; padding:20px 4px; text-align:center;}
+
+.list{display:flex; flex-direction:column; gap:0;}
+.list-row{display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--line); gap:10px;}
+.list-row:last-child{border-bottom:none;}
+.list-row .meta{font-size:12px; color:var(--ink-faint);}
+.list-row .main{font-weight:600; font-size:14px;}
+.row-actions{display:flex; gap:4px; flex:none;}
+.icon-btn{width:30px; height:30px; border-radius:8px; border:1px solid var(--line); background:var(--surface); color:var(--ink-soft); display:flex; align-items:center; justify-content:center; padding:0;}
+.icon-btn:hover{background:var(--surface-2); color:var(--ink);}
+.icon-btn svg{width:14px; height:14px;}
+.icon-btn.danger:hover{background:var(--over-soft); color:var(--over); border-color:var(--over-soft);}
+.confirm-chip{display:flex; align-items:center; gap:8px; flex:none;}
+.confirm-chip span{font-size:12px; color:var(--over); font-weight:600; white-space:nowrap;}
+.confirm-chip button{padding:6px 12px; border-radius:8px; font-size:12.5px; font-weight:600; border:1px solid transparent;}
+.confirm-chip .yes{background:var(--over); color:#fff;}
+.confirm-chip .no{background:var(--surface); border-color:var(--line); color:var(--ink-soft);}
+.edit-row{display:flex; gap:8px; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); flex-wrap:wrap;}
+.edit-row input{padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-size:13.5px;}
+.edit-row input.ename{flex:1; min-width:100px;}
+.edit-row input.ekcal{width:90px;}
+
+.camera-tabs{display:flex; gap:8px; margin-bottom:16px;}
+.camera-tab{flex:1; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--surface); text-align:center; font-size:13.5px; font-weight:600; color:var(--ink-soft);}
+.camera-tab.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-ink);}
+
+.result-card{margin-top:16px; padding:16px; border-radius:var(--radius); background:var(--surface-2); border:1px solid var(--line);}
+.result-kcal{font-size:34px; font-weight:700; font-family:'IBM Plex Mono',monospace;}
+.macro-row{display:flex; gap:10px; margin-top:10px;}
+.macro-chip{flex:1; background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:8px 10px; text-align:center;}
+.macro-chip .n{font-size:16px; font-weight:600; font-family:'IBM Plex Mono',monospace;}
+.macro-chip .l{font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em;}
+.item-tag{display:inline-block; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:3px 10px; font-size:12px; margin:3px 4px 0 0;}
+
+.order-card{margin-top:14px; padding:16px; border-radius:var(--radius); background:var(--teal-soft); border:1px solid var(--line);}
+.order-card h3{font-size:14px; color:var(--teal); margin-bottom:8px;}
+.order-steps{display:flex; gap:8px; flex-wrap:wrap;}
+.order-step{display:flex; align-items:center; gap:7px; background:var(--surface); border-radius:9px; padding:7px 11px; font-size:12.5px; flex:1; min-width:150px;}
+.order-step .n{width:18px; height:18px; border-radius:50%; background:var(--teal); color:var(--bg); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none;}
+
+.msg{font-size:13px; padding:10px 12px; border-radius:9px; margin-top:10px;}
+.msg.error{background:var(--over-soft); color:var(--over);}
+.msg.info{background:var(--teal-soft); color:var(--teal);}
+
+.spinner{width:16px; height:16px; border:2px solid var(--line); border-top-color:var(--teal); border-radius:50%; display:inline-block; animation:spin .8s linear infinite; vertical-align:-3px; margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none;}}
+
+.bottom-bar{display:none;}
+@media (max-width:900px){
+  .rail{display:none;}
+  main{padding:20px 16px 96px;}
+  .bottom-bar{
+    display:flex; position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--line);
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom)); gap:2px; z-index:20;
+  }
+  .bottom-bar .navbtn{flex-direction:column; flex:1; text-align:center; gap:3px; font-size:10.5px; padding:6px 2px;}
+  .bottom-bar .navbtn.active{background:transparent;}
+  .bottom-bar .navbtn svg{margin:0 auto;}
+}
+
+.lock-screen{position:fixed; inset:0; z-index:999; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px;}
+.lock-card{width:100%; max-width:320px;}
+.lock-card .brand{justify-content:center; padding:0 0 22px; font-size:26px;}
+.lock-card .btn{width:100%;}
+
+.sync-dot{width:7px; height:7px; border-radius:50%; background:var(--ink-faint); display:inline-block; margin-right:5px;}
+.sync-dot.ok{background:var(--good);}
+.sync-dot.busy{background:var(--warn);}
+.sync-dot.err{background:var(--over);}
+#syncLine{cursor:default; margin:2px 0 0;}
+#syncLine.clickable{cursor:pointer; text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-card">
+    <div class="brand">食刻 <small>Shí Kè</small></div>
+    <div id="lockBody"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <nav class="rail" id="railNav">
+    <div class="brand">食刻 <small>Shí Kè</small></div>
+  </nav>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section class="view" data-view="dashboard">
+      <div class="pagehead">
+        <h1>總覽</h1>
+        <p id="dashDate"></p>
+        <p id="syncLine" class="hint"></p>
+      </div>
+      <div id="encourageBox"></div>
+      <div class="grid grid-3" id="statRow"></div>
+      <div style="height:14px"></div>
+      <div class="card">
+        <h2>體重趨勢</h2>
+        <p class="hint">原始紀錄與 7 天移動平均，虛線為目標體重</p>
+        <div id="weightChartWrap"></div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="card">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h2>BMI 趨勢</h2>
+            <p class="hint">體重 ÷ 身高平方，需在「目標」頁面填寫身高</p>
+          </div>
+          <div id="bmiNow"></div>
+        </div>
+        <div id="bmiChart" style="margin-top:8px;"></div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="grid grid-2">
+        <div class="card">
+          <h2>今日熱量</h2>
+          <div id="todayCalorieBox"></div>
+        </div>
+        <div class="card">
+          <h2>身體組成趨勢</h2>
+          <p class="hint">來自 InBody 紀錄（選填）</p>
+          <div id="bodyCompChart"></div>
+        </div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="card" id="etaCard"></div>
+    </section>
+
+    <!-- WEIGHT -->
+    <section class="view" data-view="weight">
+      <div class="pagehead">
+        <h1>體重紀錄</h1>
+        <p>建議在<b>早上起床後、如廁後、早餐前</b>量測，穿著盡量固定——一天內體重可能因飲水與排汗波動 1–2 公斤，早晨空腹是最穩定、最適合比較的時間點。</p>
+      </div>
+      <div class="card">
+        <div class="field-row">
+          <div class="field"><label for="wDate">日期</label><input type="date" id="wDate"></div>
+          <div class="field"><label for="wKg">體重 (kg)</label><input type="number" id="wKg" step="0.1" placeholder="例如 68.4"></div>
+        </div>
+        <button class="toggle-more" id="toggleInbody" type="button">+ 新增 InBody 數據（體脂率／骨骼肌量／內臟脂肪，選填）</button>
+        <div id="inbodyFields" style="display:none; margin-top:10px;">
+          <div class="field-row">
+            <div class="field"><label for="wFat">體脂率 (%)</label><input type="number" id="wFat" step="0.1"></div>
+            <div class="field"><label for="wMuscle">骨骼肌量 (kg)</label><input type="number" id="wMuscle" step="0.1"></div>
+            <div class="field"><label for="wVisc">內臟脂肪等級</label><input type="number" id="wVisc" step="1"></div>
+          </div>
+        </div>
+        <div class="field"><label for="wNote">備註（選填）</label><input type="text" id="wNote" placeholder="例如：生理期、聚餐後、感冒中"></div>
+        <button class="btn btn-primary" id="saveWeightBtn">儲存今日紀錄</button>
+        <div id="weightMsg"></div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="card">
+        <h2>歷史紀錄</h2>
+        <div id="weightHistory"></div>
+      </div>
+    </section>
+
+    <!-- MEALS -->
+    <section class="view" data-view="meals">
+      <div class="pagehead">
+        <h1>飲食紀錄</h1>
+        <p>把吃的東西描述給 Claude，或直接輸入數字；也可以先記「想吃的」，看看值多少卡再決定。</p>
+      </div>
+      <div class="order-card">
+        <h3>開動前，先想一下進食順序</h3>
+        <div class="order-steps">
+          <div class="order-step"><span class="n">1</span>高纖蔬菜／湯</div>
+          <div class="order-step"><span class="n">2</span>優質蛋白質</div>
+          <div class="order-step"><span class="n">3</span>澱粉／碳水最後吃</div>
+        </div>
+        <p class="hint" style="margin-top:8px;">先菜後肉再飯，有助延緩血糖上升、增加飽足感。記錄可以等一下再填。</p>
+      </div>
+      <div style="height:14px"></div>
+      <div class="camera-tabs">
+        <button class="camera-tab active" data-mode="logged" id="tabLogged">✓ 已經要吃了，記錄下來</button>
+        <button class="camera-tab" data-mode="preview" id="tabPreview">? 先看看，還沒決定</button>
+      </div>
+      <div class="card">
+        <div id="analyzeMsg"></div>
+        <div id="manualForm" style="margin-top:0;">
+          <p class="hint" style="margin-bottom:10px;">在 Claude 對話裡複製估算結果後，長按下面貼上，或按「自動抓取剪貼簿」，再按「解析並帶入」：</p>
+          <div class="field">
+            <label for="pasteArea">貼上 Claude 給你的估算結果</label>
+            <textarea id="pasteArea" placeholder="長按這裡選「貼上」，把 Claude 回覆的內容貼進來"></textarea>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-outline" id="pasteBtn" type="button">📋 自動抓取剪貼簿</button>
+            <button class="btn btn-primary" id="parseBtn" type="button">解析並帶入欄位</button>
+          </div>
+          <div id="pasteMsg"></div>
+          <div class="divider"></div>
+          <div class="field"><label for="mName">食物名稱</label><input type="text" id="mName" placeholder="例如：豬肉炒時蔬便當"></div>
+          <div class="quad-row">
+            <div class="field"><label for="mKcal">熱量 (kcal)</label><input type="number" id="mKcal" step="1"></div>
+            <div class="field"><label for="mProtein">蛋白質 (g)</label><input type="number" id="mProtein" step="1"></div>
+            <div class="field"><label for="mCarb">碳水 (g)</label><input type="number" id="mCarb" step="1"></div>
+            <div class="field"><label for="mFat">脂肪 (g)</label><input type="number" id="mFat" step="1"></div>
+          </div>
+          <button class="btn btn-primary btn-block" id="manualSaveBtn" type="button">儲存這筆紀錄</button>
+        </div>
+        <div id="resultArea"></div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="card">
+        <h2>今日飲食紀錄</h2>
+        <div id="mealHistory"></div>
+      </div>
+    </section>
+
+    <!-- GOAL -->
+    <section class="view" data-view="goal">
+      <div class="pagehead">
+        <h1>體重目標</h1>
+        <p>設定目標後，會依你的身體數據換算每日建議熱量，並隨體重變化動態微調。</p>
+      </div>
+      <div class="card">
+        <div class="field-row">
+          <div class="field"><label for="gHeight">身高 (cm)</label><input type="number" id="gHeight" step="0.1"></div>
+          <div class="field"><label for="gAge">年齡</label><input type="number" id="gAge" step="1"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="gGender">性別</label>
+            <select id="gGender"><option value="female">女性</option><option value="male">男性</option><option value="other">其他 / 不提供</option></select>
+          </div>
+          <div class="field"><label for="gActivity">日常活動量</label>
+            <select id="gActivity">
+              <option value="1.2">久坐（辦公室工作）</option>
+              <option value="1.375">輕度活動（每週運動 1–3 天）</option>
+              <option value="1.55" selected>中度活動（每週運動 3–5 天）</option>
+              <option value="1.725">高度活動（每週運動 6–7 天）</option>
+              <option value="1.9">非常高強度（勞力工作／每天訓練）</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="gCurrent">目前體重 (kg)</label><input type="number" id="gCurrent" step="0.1"><span class="help">若已有體重紀錄會自動帶入最新一筆</span></div>
+          <div class="field"><label for="gTarget">目標體重 (kg)</label><input type="number" id="gTarget" step="0.1"></div>
+        </div>
+        <div class="field"><label for="gDate">目標日期</label><input type="date" id="gDate"></div>
+        <button class="btn btn-primary" id="saveGoalBtn">儲存目標並計算</button>
+        <div id="goalMsg"></div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="card" id="goalSummary"></div>
+    </section>
+  </main>
+
+  <nav class="bottom-bar" id="bottomNav"></nav>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — fill this in after creating your OAuth Client ID
+// in Google Cloud Console (see setup instructions).
+// ============================================================
+const GOOGLE_CLIENT_ID = 'REPLACE_WITH_YOUR_CLIENT_ID.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DATA_FILENAME = 'shike-data.json';
+
+const ICONS = {
+  dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h4v8H3zM10 3h4v18h-4zM17 8h4v13h-4z"/></svg>',
+  weight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 13l3-3M9 5h6l-1 3H10z"/></svg>',
+  meals: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a8 5 0 0016 0M4 8a8 5 0 0116-0M4 8v6a8 4 0 0016 0V8"/></svg>',
+  goal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/></svg>',
+};
+const VIEWS = [
+  {id:'dashboard', label:'總覽'},
+  {id:'weight', label:'體重'},
+  {id:'meals', label:'飲食'},
+  {id:'goal', label:'目標'},
+];
+
+const state = { weights: [], meals: [], goal: null, view: 'dashboard' };
+let mealMode = 'logged';
+
+const ICON_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
+const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
+const $ = (id) => document.getElementById(id);
+const todayStr = () => new Date().toISOString().slice(0,10);
+const fmtDate = (d) => { const dt = new Date(d+'T00:00:00'); return `${dt.getMonth()+1}/${dt.getDate()}`; };
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+
+// ---------- nav ----------
+function buildNav(){
+  const rail = $('railNav'), bottom = $('bottomNav');
+  VIEWS.forEach(v => {
+    const b1 = document.createElement('button');
+    b1.className = 'navbtn'; b1.dataset.view = v.id;
+    b1.innerHTML = ICONS[v.id] + '<span>' + v.label + '</span>';
+    b1.onclick = () => setView(v.id);
+    rail.appendChild(b1);
+
+    const b2 = b1.cloneNode(true);
+    b2.onclick = () => setView(v.id);
+    bottom.appendChild(b2);
+  });
+}
+function setView(id){
+  state.view = id;
+  document.querySelectorAll('.view').forEach(el => el.classList.toggle('active', el.dataset.view === id));
+  document.querySelectorAll('.navbtn').forEach(el => el.classList.toggle('active', el.dataset.view === id));
+  if(id === 'dashboard') renderDashboard();
+  if(id === 'weight') renderWeightView();
+  if(id === 'meals') renderMealHistory();
+  if(id === 'goal') renderGoalView();
+}
+
+// ============================================================
+// Google Sign-In + Drive storage
+// ============================================================
+let accessToken = null;
+let tokenClient = null;
+let driveFileId = null;
+
+function initGoogleAuth(){
+  if(!(window.google && google.accounts && google.accounts.oauth2)){
+    setTimeout(initGoogleAuth, 250);
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: '',
+  });
+  renderSignInGate();
+}
+function renderSignInGate(errMsg){
+  const notConfigured = GOOGLE_CLIENT_ID.indexOf('REPLACE_WITH') === 0;
+  $('lockBody').innerHTML = `
+    <p class="hint" style="text-align:center; margin-bottom:16px;">用你的 Google 帳號登入，資料會存在你自己的 Google Drive（一個叫 ${DATA_FILENAME} 的檔案）</p>
+    <button class="btn btn-primary btn-block" id="googleSignInBtn" type="button" ${notConfigured?'disabled':''}>用 Google 登入</button>
+    <div id="lockMsg">${errMsg ? `<div class="msg error">${errMsg}</div>` : notConfigured ? '<div class="msg error">尚未設定 Google 用戶端 ID，請先完成 Google Cloud Console 的設定步驟</div>' : ''}</div>`;
+  if(!notConfigured) $('googleSignInBtn').onclick = requestAccessToken;
+}
+function requestAccessToken(){
+  tokenClient.callback = async (resp) => {
+    if(resp.error){ renderSignInGate('登入失敗：' + resp.error); return; }
+    accessToken = resp.access_token;
+    $('lockBody').innerHTML = '<p class="hint" style="text-align:center;"><span class="spinner"></span>正在讀取你的 Google Drive…</p>';
+    try{
+      await loadFromDrive();
+      unlockApp();
+    }catch(e){
+      renderSignInGate('讀取 Google Drive 失敗，請再試一次');
+    }
+  };
+  tokenClient.requestAccessToken();
+}
+function reacquireToken(){
+  return new Promise((resolve, reject) => {
+    tokenClient.callback = (resp) => {
+      if(resp.error){ reject(resp.error); return; }
+      accessToken = resp.access_token;
+      resolve();
+    };
+    tokenClient.requestAccessToken({prompt: ''});
+  });
+}
+async function driveFetch(url, opts, retry){
+  if(retry === undefined) retry = true;
+  const headers = Object.assign({}, opts && opts.headers, {Authorization: 'Bearer ' + accessToken});
+  const res = await fetch(url, Object.assign({}, opts, {headers}));
+  if(res.status === 401 && retry){
+    await reacquireToken();
+    return driveFetch(url, opts, false);
+  }
+  if(!res.ok) throw new Error('Drive request failed: ' + res.status);
+  return res;
+}
+async function findOrCreateFile(){
+  const q = encodeURIComponent(`name='${DATA_FILENAME}' and trashed=false`);
+  const listRes = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name)`);
+  const listData = await listRes.json();
+  if(listData.files && listData.files.length) return listData.files[0].id;
+  const createRes = await driveFetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: DATA_FILENAME, mimeType: 'application/json'}),
+  });
+  const created = await createRes.json();
+  await driveFetch(`https://www.googleapis.com/upload/drive/v3/files/${created.id}?uploadType=media`, {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({weights:{}, meals:[], goal:null}),
+  });
+  return created.id;
+}
+async function loadFromDrive(){
+  driveFileId = await findOrCreateFile();
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`);
+  const raw = await res.json().catch(() => ({}));
+  state.weights = Object.values(raw.weights || {}).sort((a,b)=>a.date.localeCompare(b.date));
+  state.meals = (raw.meals || []).sort((a,b)=>b.ts.localeCompare(a.ts));
+  state.goal = raw.goal || null;
+}
+function setSyncStatus(status){
+  const el = $('syncLine');
+  if(!el) return;
+  el.classList.remove('clickable');
+  el.onclick = null;
+  if(status === 'busy') el.innerHTML = '<span class="sync-dot busy"></span>同步中…';
+  else if(status === 'ok') el.innerHTML = '<span class="sync-dot ok"></span>已同步到 Google Drive';
+  else if(status === 'err'){
+    el.innerHTML = '<span class="sync-dot err"></span>同步失敗，點此重試';
+    el.classList.add('clickable');
+    el.onclick = () => saveToDrive();
+  }
+}
+async function saveToDrive(){
+  setSyncStatus('busy');
+  const raw = {weights:{}, meals: state.meals, goal: state.goal};
+  state.weights.forEach(w => raw.weights[w.date] = w);
+  try{
+    await driveFetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(raw),
+    });
+    setSyncStatus('ok');
+  }catch(e){
+    setSyncStatus('err');
+  }
+}
+function unlockApp(){
+  $('lockScreen').style.display = 'none';
+  $('app').style.display = 'flex';
+  setView('dashboard');
+}
+
+// ---------- storage (in-memory state, written through to Drive) ----------
+async function saveWeight(doc){
+  state.weights = state.weights.filter(w => w.date !== doc.date);
+  state.weights.push(doc);
+  state.weights.sort((a,b)=>a.date.localeCompare(b.date));
+  renderAll();
+  await saveToDrive();
+}
+async function saveMeal(doc){
+  doc.id = 'm' + Date.now() + Math.random().toString(36).slice(2,6);
+  state.meals.unshift(doc);
+  renderAll();
+  await saveToDrive();
+}
+async function saveGoal(doc){
+  state.goal = doc;
+  renderAll();
+  await saveToDrive();
+}
+async function deleteWeight(date){
+  state.weights = state.weights.filter(w => w.date !== date);
+  renderAll();
+  await saveToDrive();
+}
+async function deleteMeal(id){
+  state.meals = state.meals.filter(m => m.id !== id);
+  renderAll();
+  await saveToDrive();
+}
+async function updateMeal(id, patch){
+  const m = state.meals.find(m => m.id === id);
+  if(m) Object.assign(m, patch);
+  renderAll();
+  await saveToDrive();
+}
+
+function renderAll(){
+  if(state.view === 'dashboard') renderDashboard();
+  if(state.view === 'weight') renderWeightView();
+  if(state.view === 'meals') renderMealHistory();
+  if(state.view === 'goal') renderGoalView();
+}
+
+// ---------- calc helpers ----------
+function bmr({weightKg, heightCm, age, gender}){
+  const base = 10*weightKg + 6.25*heightCm - 5*age;
+  if(gender==='male') return base + 5;
+  if(gender==='female') return base - 161;
+  return base - 78;
+}
+function movingAvg(arr, key, window){
+  return arr.map((_,i) => {
+    const s = Math.max(0, i-window+1);
+    const slice = arr.slice(s, i+1).map(x=>x[key]).filter(v=>v!=null);
+    return slice.length ? slice.reduce((a,b)=>a+b,0)/slice.length : null;
+  });
+}
+function linRegSlope(points){ // points: [{x,y}]
+  const n = points.length;
+  if(n < 2) return 0;
+  const xbar = points.reduce((a,p)=>a+p.x,0)/n;
+  const ybar = points.reduce((a,p)=>a+p.y,0)/n;
+  let num=0, den=0;
+  points.forEach(p => { num += (p.x-xbar)*(p.y-ybar); den += (p.x-xbar)**2; });
+  return den ? num/den : 0;
+}
+function todaysLoggedMeals(){
+  const t = todayStr();
+  return state.meals.filter(m => m.mealType==='logged' && m.date===t);
+}
+function calorieBudgetToday(){
+  if(!state.goal) return null;
+  let target = state.goal.targetCalories;
+  const adj = trendAdjustment();
+  target = Math.max(1200, target + adj);
+  return {target, adj};
+}
+function trendAdjustment(){
+  if(!state.goal || state.weights.length < 4) return 0;
+  const last14 = state.weights.slice(-14).map((w,i)=>({x:i, y:w.weightKg}));
+  const slopePerDay = linRegSlope(last14);
+  const targetSlopePerDay = -(state.goal.weeklyRateKg/7);
+  const diff = slopePerDay - targetSlopePerDay;
+  if(diff > 0.03) return -150;
+  if(diff < -0.03) return 150;
+  return 0;
+}
+
+// ---------- encouragement ----------
+const MSG_GOOD = ['今天的額度控制得剛剛好，這就是穩定進步的樣子。','很扎實的一天，身體會慢慢感謝你的用心。','節奏抓得很好，繼續這樣下去就對了。','這樣的一天累積起來，就是看得見的改變。'];
+const MSG_WARN = ['額度快滿了，晚一點如果還要吃，選清爽一點的就很剛好。','還有一點空間，聽聽身體真正的需求就好，不用勉強清空額度。'];
+const MSG_OVER = ['今天超過一點點沒關係，重要的是趨勢，不是單一天的數字。','偶爾超標很正常，明天繼續就好，你已經在做對的事了。','別對自己太嚴格，持續記錄本身就是很棒的一步。'];
+const MSG_AHEAD = ['體重下降的速度比預期快，做得很好！也記得別太快，留意身體發出的訊號。','進度超前了，你正在朝目標穩穩前進。'];
+const MSG_BEHIND = ['最近的步調比預期慢一點，沒關係，總覽會自動幫你微調額度，慢慢來也是前進。','身體變化本來就不是直線的，持續記錄，趨勢會說話。'];
+const MSG_ONTRACK = ['目前的節奏跟計劃很接近，穩穩地朝目標前進中。','照這個速度走下去，會準時抵達目標。'];
+function pick(arr, seed){
+  let h = 0; for(let i=0;i<seed.length;i++) h = (h*31 + seed.charCodeAt(i)) >>> 0;
+  return arr[h % arr.length];
+}
+function computeLoggingStreak(){
+  const dates = new Set(state.weights.map(w => w.date));
+  let cursor = new Date(todayStr()+'T00:00:00');
+  if(!dates.has(cursor.toISOString().slice(0,10))) cursor.setDate(cursor.getDate()-1);
+  let streak = 0;
+  while(dates.has(cursor.toISOString().slice(0,10))){ streak++; cursor.setDate(cursor.getDate()-1); }
+  return streak;
+}
+function renderEncouragement(latest, budget, consumed){
+  const lines = [];
+  const t = todayStr();
+  if(!state.goal){
+    lines.push({icon:'✨', text:'先到「目標」頁面設定一下，我就能幫你算出每天的熱量額度，一起開始吧！'});
+  } else {
+    const pct = consumed / budget.target;
+    if(pct <= 0.9) lines.push({icon:'👍', text: pick(MSG_GOOD, t+'g')});
+    else if(pct <= 1.0) lines.push({icon:'🙂', text: pick(MSG_WARN, t+'w')});
+    else lines.push({icon:'💛', text: pick(MSG_OVER, t+'o')});
+
+    if(latest){
+      const elapsed = (Date.now() - new Date(state.goal.startDate)) / 86400000;
+      const totalDays = (new Date(state.goal.targetDate) - new Date(state.goal.startDate)) / 86400000;
+      const total = state.goal.startWeightKg - state.goal.targetWeightKg;
+      if(totalDays > 0 && total !== 0 && elapsed > 2){
+        const timeProgress = clamp(elapsed/totalDays, 0, 1);
+        const weightProgress = clamp((state.goal.startWeightKg - latest.weightKg)/total, 0, 1.3);
+        if(weightProgress >= timeProgress + 0.08) lines.push({icon:'🚀', text: pick(MSG_AHEAD, t+'a')});
+        else if(weightProgress < timeProgress - 0.08) lines.push({icon:'🌱', text: pick(MSG_BEHIND, t+'b')});
+        else lines.push({icon:'🎯', text: pick(MSG_ONTRACK, t+'o2')});
+      }
+    }
+  }
+  const streak = computeLoggingStreak();
+  if(streak >= 3) lines.push({icon:'🔥', text:`已經連續 ${streak} 天記錄體重了，這份堅持很值得驕傲。`});
+  $('encourageBox').innerHTML = lines.map(l => `<div class="encourage-line"><span class="e-icon">${l.icon}</span><span>${l.text}</span></div>`).join('');
+}
+
+// ---------- dashboard ----------
+function renderDashboard(){
+  $('dashDate').textContent = new Date().toLocaleDateString('zh-TW', {year:'numeric', month:'long', day:'numeric', weekday:'long'});
+  setSyncStatus('ok');
+
+  const latest = state.weights[state.weights.length-1];
+  const budget = calorieBudgetToday();
+  const consumed = todaysLoggedMeals().reduce((a,m)=>a+(m.calories||0),0);
+  const remaining = budget ? budget.target - consumed : null;
+  renderEncouragement(latest, budget, consumed);
+
+  const stats = [];
+  stats.push(`
+    <div class="card stat">
+      <div class="label">目前體重</div>
+      <div class="value">${latest ? latest.weightKg.toFixed(1) : '—'}<span class="unit">kg</span></div>
+      <div class="sub">${latest ? '最後紀錄於 ' + fmtDate(latest.date) : '尚未有紀錄'}</div>
+    </div>`);
+
+  if(budget){
+    const pct = clamp(consumed / budget.target, 0, 1.4);
+    const status = consumed > budget.target ? 'over' : consumed > budget.target*0.85 ? 'warn' : 'good';
+    const remainKcal = Math.round(budget.target - consumed);
+    stats.push(`
+      <div class="card stat">
+        <div class="label">今日熱量</div>
+        <div class="value">${consumed}<span class="unit">/ ${Math.round(budget.target)} kcal</span></div>
+        <div class="bar" style="margin-top:2px;"><i style="width:${pct*100}%; background:var(--${status===  'good'?'good':status})"></i></div>
+        <div class="remain" style="color:var(--${status==='over'?'over':'good'})">${remainKcal>=0 ? '還可以吃 '+remainKcal+' kcal' : '已超過 '+Math.abs(remainKcal)+' kcal'}</div>
+        <div class="sub"><span class="pill ${status}">${status==='over'?'已超過額度':status==='warn'?'接近額度':'額度內'}</span></div>
+      </div>`);
+  } else {
+    stats.push(`<div class="card stat"><div class="label">今日熱量</div><div class="value" style="font-size:16px;color:var(--ink-faint)">尚未設定目標</div><div class="sub">前往「目標」頁面設定每日熱量</div></div>`);
+  }
+
+  if(state.goal && latest){
+    const total = state.goal.startWeightKg - state.goal.targetWeightKg;
+    const done = state.goal.startWeightKg - latest.weightKg;
+    const pct = total !== 0 ? clamp(done/total,0,1) : 0;
+    stats.push(`
+      <div class="card stat">
+        <div class="label">距離目標</div>
+        <div class="value">${Math.abs(latest.weightKg - state.goal.targetWeightKg).toFixed(1)}<span class="unit">kg</span></div>
+        <div class="bar" style="margin-top:2px;"><i style="width:${pct*100}%"></i></div>
+        <div class="sub">目標 ${state.goal.targetWeightKg} kg・${state.goal.targetDate}</div>
+      </div>`);
+  } else {
+    stats.push(`<div class="card stat"><div class="label">距離目標</div><div class="value" style="font-size:16px;color:var(--ink-faint)">—</div><div class="sub">尚未設定目標體重</div></div>`);
+  }
+  $('statRow').innerHTML = stats.join('');
+
+  $('weightChartWrap').innerHTML = state.weights.length
+    ? renderWeightChart()
+    : '<div class="empty">還沒有體重紀錄，先到「體重」頁面記一筆吧</div>';
+
+  renderTodayCalorieBox(consumed, budget);
+  renderBmiSection(latest);
+  renderBodyCompChart();
+  renderEtaCard(latest);
+}
+
+function bmiOf(weightKg, heightCm){
+  if(!heightCm) return null;
+  const m = heightCm/100;
+  return weightKg / (m*m);
+}
+function bmiCategory(bmi){
+  if(bmi < 18.5) return {label:'過輕', tone:'warn'};
+  if(bmi < 24) return {label:'正常範圍', tone:'good'};
+  if(bmi < 27) return {label:'過重', tone:'warn'};
+  return {label:'肥胖', tone:'over'};
+}
+function renderBmiSection(latest){
+  const heightCm = state.goal && state.goal.heightCm;
+  if(!heightCm || !latest){
+    $('bmiNow').innerHTML = '';
+    $('bmiChart').innerHTML = `<div class="empty">${!latest ? '先記錄體重後即可顯示 BMI' : '請先到「目標」頁面填寫身高'}</div>`;
+    return;
+  }
+  const nowBmi = bmiOf(latest.weightKg, heightCm);
+  const cat = bmiCategory(nowBmi);
+  $('bmiNow').innerHTML = `
+    <div style="text-align:right;">
+      <div class="num" style="font-size:24px; font-weight:700; line-height:1.1;">${nowBmi.toFixed(1)}</div>
+      <span class="pill ${cat.tone}">${cat.label}</span>
+    </div>`;
+
+  const data = state.weights.slice(-90).map(w => ({date:w.date, bmi: bmiOf(w.weightKg, heightCm)}));
+  if(data.length < 2){ $('bmiChart').innerHTML = '<div class="empty">再累積幾筆體重紀錄即可看到趨勢</div>'; return; }
+  const W=640, H=170, PAD=28;
+  const refLines = [18.5, 24, 27];
+  const ys = data.map(d=>d.bmi).concat(refLines);
+  let min=Math.min(...ys), max=Math.max(...ys); if(min===max){min-=1;max+=1;}
+  const pad=(max-min)*0.12; min-=pad; max+=pad;
+  const x = i => PAD + (data.length<=1?0:i*(W-2*PAD)/(data.length-1));
+  const y = v => H-PAD - (v-min)*(H-2*PAD)/(max-min);
+  const path = data.map((d,i)=>`${i===0?'M':'L'}${x(i)},${y(d.bmi)}`).join(' ');
+  const refs = refLines.filter(v => v>min && v<max).map(v => `
+    <line x1="${PAD}" y1="${y(v)}" x2="${W-PAD}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
+    <text x="${W-PAD}" y="${y(v)-3}" font-size="9.5" fill="var(--ink-faint)" font-family="IBM Plex Mono" text-anchor="end">${v}</text>`).join('');
+  const firstLabel = `<text x="${PAD}" y="${H-6}" font-size="10" fill="var(--ink-faint)" font-family="IBM Plex Mono">${fmtDate(data[0].date)}</text>`;
+  const lastLabel = `<text x="${W-PAD}" y="${H-6}" font-size="10" fill="var(--ink-faint)" font-family="IBM Plex Mono" text-anchor="end">${fmtDate(data[data.length-1].date)}</text>`;
+  $('bmiChart').innerHTML = `
+    <svg class="chart" viewBox="0 0 ${W} ${H}">
+      <line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="var(--line)"/>
+      ${refs}
+      <path d="${path}" fill="none" stroke="var(--teal)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      ${firstLabel}${lastLabel}
+    </svg>
+    <p class="hint" style="margin-top:4px;">虛線由下至上為 18.5／24／27，台灣衛福部的過輕／正常／過重分界</p>`;
+}
+
+function renderWeightChart(){
+  const W = 640, H = 200, PAD = 28;
+  const data = state.weights.slice(-90);
+  const ys = data.map(w=>w.weightKg);
+  let min = Math.min(...ys), max = Math.max(...ys);
+  if(state.goal){ min = Math.min(min, state.goal.targetWeightKg); max = Math.max(max, state.goal.targetWeightKg); }
+  if(min===max){ min -= 1; max += 1; }
+  const pad = (max-min)*0.12; min -= pad; max += pad;
+  const x = i => PAD + (data.length<=1 ? 0 : i*(W-2*PAD)/(data.length-1));
+  const y = v => H-PAD - (v-min)*(H-2*PAD)/(max-min);
+
+  const ma = movingAvg(data, 'weightKg', 7);
+  const rawPts = data.map((d,i)=>`${x(i)},${y(d.weightKg)}`).join(' ');
+  const maPath = ma.map((v,i)=> v==null ? null : `${i===0?'M':'L'}${x(i)},${y(v)}`).filter(Boolean).join(' ');
+
+  let goalLine = '';
+  if(state.goal){
+    const gy = y(state.goal.targetWeightKg);
+    goalLine = `<line x1="${PAD}" y1="${gy}" x2="${W-PAD}" y2="${gy}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+  }
+
+  const dots = data.map((d,i)=>`<circle cx="${x(i)}" cy="${y(d.weightKg)}" r="2.4" fill="var(--ink-faint)"/>`).join('');
+  const firstLabel = data.length ? `<text x="${PAD}" y="${H-6}" font-size="10" fill="var(--ink-faint)" font-family="IBM Plex Mono">${fmtDate(data[0].date)}</text>` : '';
+  const lastLabel = data.length ? `<text x="${W-PAD}" y="${H-6}" font-size="10" fill="var(--ink-faint)" font-family="IBM Plex Mono" text-anchor="end">${fmtDate(data[data.length-1].date)}</text>` : '';
+
+  return `
+    <svg class="chart" viewBox="0 0 ${W} ${H}">
+      <line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="var(--line)"/>
+      ${goalLine}
+      <polyline points="${rawPts}" fill="none" stroke="var(--line)" stroke-width="1.5"/>
+      ${dots}
+      <path d="${maPath}" fill="none" stroke="var(--teal)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      ${firstLabel}${lastLabel}
+    </svg>
+    <div class="chart-legend">
+      <span><i style="background:var(--line)"></i>單日體重</span>
+      <span><i style="background:var(--teal)"></i>7天移動平均</span>
+      ${state.goal ? '<span><i style="background:var(--accent); border-top:2px dashed var(--accent); background:none;"></i>目標體重</span>' : ''}
+    </div>`;
+}
+
+function renderBodyCompChart(){
+  const data = state.weights.filter(w => w.bodyFatPct != null).slice(-30);
+  if(data.length < 2){ $('bodyCompChart').innerHTML = '<div class="empty">記錄 2 筆以上 InBody 資料後顯示趨勢</div>'; return; }
+  const W=280, H=140, PAD=24;
+  const ys = data.map(d=>d.bodyFatPct);
+  let min=Math.min(...ys), max=Math.max(...ys); if(min===max){min-=1;max+=1;}
+  const pad=(max-min)*0.15; min-=pad; max+=pad;
+  const x = i => PAD + (data.length<=1?0:i*(W-2*PAD)/(data.length-1));
+  const y = v => H-PAD - (v-min)*(H-2*PAD)/(max-min);
+  const path = data.map((d,i)=>`${i===0?'M':'L'}${x(i)},${y(d.bodyFatPct)}`).join(' ');
+  $('bodyCompChart').innerHTML = `
+    <svg class="chart" viewBox="0 0 ${W} ${H}">
+      <line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="var(--line)"/>
+      <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="chart-legend"><span><i style="background:var(--accent)"></i>體脂率 %</span></div>`;
+}
+
+function renderTodayCalorieBox(consumed, budget){
+  const meals = todaysLoggedMeals();
+  const p = meals.reduce((a,m)=>a+(m.proteinG||0),0);
+  const c = meals.reduce((a,m)=>a+(m.carbG||0),0);
+  const f = meals.reduce((a,m)=>a+(m.fatG||0),0);
+  let html = '';
+  if(budget && budget.adj !== 0){
+    html += `<div class="msg info" style="margin-top:0;">${budget.adj<0 ? '近期體重下降較目標慢，今日額度已自動下調 150 kcal' : '近期體重下降較目標快，今日額度已自動上調 150 kcal，避免流失肌肉'}</div>`;
+  }
+  html += `<div class="macro-row" style="margin-top:${budget && budget.adj!==0?'10px':'0'}">
+      <div class="macro-chip"><div class="n">${Math.round(p)}g</div><div class="l">蛋白質</div></div>
+      <div class="macro-chip"><div class="n">${Math.round(c)}g</div><div class="l">碳水</div></div>
+      <div class="macro-chip"><div class="n">${Math.round(f)}g</div><div class="l">脂肪</div></div>
+    </div>
+    <p class="hint" style="margin-top:10px;">已記錄 ${meals.length} 餐・<a href="#" onclick="setView('meals');return false;" style="color:var(--teal); font-weight:600;">去記錄 →</a></p>`;
+  $('todayCalorieBox').innerHTML = html;
+}
+
+function renderEtaCard(latest){
+  if(!state.goal || !latest || state.weights.length < 4){
+    $('etaCard').innerHTML = `<h2>預測</h2><p class="hint">設定目標並累積幾天體重紀錄後，這裡會顯示預估達成日期</p>`;
+    return;
+  }
+  const last14 = state.weights.slice(-14).map((w,i)=>({x:i,y:w.weightKg}));
+  const slope = linRegSlope(last14); // kg/day
+  const remain = latest.weightKg - state.goal.targetWeightKg;
+  let msg;
+  if(Math.abs(slope) < 0.005){
+    msg = `<p>近期體重變化不明顯，還無法預測達成日期。</p>`;
+  } else if((remain>0 && slope>0) || (remain<0 && slope<0)){
+    msg = `<p>目前趨勢方向與目標相反，建議依「今日熱量」卡片的建議額度調整攝取。</p>`;
+  } else {
+    const days = Math.abs(remain/slope);
+    const eta = new Date(Date.now() + days*86400000);
+    msg = `<p>依近 14 天趨勢，預估約 <b class="num">${Math.round(days)}</b> 天後（${eta.toLocaleDateString('zh-TW',{month:'long',day:'numeric'})}）達成目標體重。</p>`;
+  }
+  $('etaCard').innerHTML = `<h2>預測</h2>${msg}<p class="hint">此預測僅供參考，非醫療建議。若有特殊健康狀況，請諮詢醫師或營養師。</p>`;
+}
+
+// ---------- weight view ----------
+let weightPendingDelete = null;
+function renderWeightView(){
+  if(!$('wDate').value) $('wDate').value = todayStr();
+  const rows = state.weights.slice().reverse().slice(0,30).map(w => `
+    <div class="list-row" data-date="${w.date}">
+      <div>
+        <div class="main">${w.weightKg.toFixed(1)} kg</div>
+        <div class="meta">${w.date}${w.bodyFatPct!=null ? ' ・ 體脂 '+w.bodyFatPct+'%':''}${w.note ? ' ・ '+w.note : ''}</div>
+      </div>
+      ${w.date === weightPendingDelete ? `
+      <div class="confirm-chip">
+        <span>確定刪除？</span>
+        <button class="yes" data-yes>刪除</button>
+        <button class="no" data-no>取消</button>
+      </div>` : `
+      <div class="row-actions">
+        <button class="icon-btn edit-weight" title="修正這筆" aria-label="修正這筆">${ICON_EDIT}</button>
+        <button class="icon-btn danger del-weight" title="刪除這筆" aria-label="刪除這筆">${ICON_TRASH}</button>
+      </div>`}
+    </div>`).join('');
+  $('weightHistory').innerHTML = rows || '<div class="empty">尚無紀錄</div>';
+  $('weightHistory').querySelectorAll('.edit-weight').forEach(btn => {
+    btn.onclick = () => {
+      const date = btn.closest('.list-row').dataset.date;
+      const w = state.weights.find(x => x.date === date);
+      if(!w) return;
+      $('wDate').value = w.date; $('wKg').value = w.weightKg;
+      $('wNote').value = w.note || '';
+      $('wFat').value = w.bodyFatPct ?? ''; $('wMuscle').value = w.muscleMassKg ?? ''; $('wVisc').value = w.visceralFat ?? '';
+      if(w.bodyFatPct!=null || w.muscleMassKg!=null || w.visceralFat!=null) $('inbodyFields').style.display = 'block';
+      $('weightMsg').innerHTML = `<div class="msg info">正在修正 ${date} 的紀錄，改完數字後按「儲存」即可覆蓋</div>`;
+      window.scrollTo({top:0, behavior:'smooth'});
+    };
+  });
+  $('weightHistory').querySelectorAll('.del-weight').forEach(btn => {
+    btn.onclick = () => { weightPendingDelete = btn.closest('.list-row').dataset.date; renderWeightView(); };
+  });
+  $('weightHistory').querySelectorAll('[data-yes]').forEach(btn => {
+    btn.onclick = async () => {
+      const date = btn.closest('.list-row').dataset.date;
+      weightPendingDelete = null;
+      await deleteWeight(date);
+    };
+  });
+  $('weightHistory').querySelectorAll('[data-no]').forEach(btn => {
+    btn.onclick = () => { weightPendingDelete = null; renderWeightView(); };
+  });
+}
+$('toggleInbody').onclick = () => {
+  const el = $('inbodyFields');
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+};
+$('saveWeightBtn').onclick = async () => {
+  const date = $('wDate').value || todayStr();
+  const weightKg = parseFloat($('wKg').value);
+  if(!weightKg || weightKg<=0){ $('weightMsg').innerHTML = '<div class="msg error">請輸入有效的體重數字</div>'; return; }
+  const doc = { date, weightKg, note: $('wNote').value || null, updatedAt: new Date().toISOString() };
+  const fat = parseFloat($('wFat').value), muscle = parseFloat($('wMuscle').value), visc = parseFloat($('wVisc').value);
+  if(!isNaN(fat)) doc.bodyFatPct = fat;
+  if(!isNaN(muscle)) doc.muscleMassKg = muscle;
+  if(!isNaN(visc)) doc.visceralFat = visc;
+  try{
+    await saveWeight(doc);
+    $('weightMsg').innerHTML = '<div class="msg info">已儲存</div>';
+    $('wDate').value = todayStr();
+    $('wKg').value=''; $('wNote').value=''; $('wFat').value=''; $('wMuscle').value=''; $('wVisc').value='';
+    $('inbodyFields').style.display = 'none';
+  }catch(e){ $('weightMsg').innerHTML = '<div class="msg error">儲存失敗，請再試一次</div>'; }
+};
+
+// ---------- meals view ----------
+$('tabLogged').onclick = () => setMealMode('logged');
+$('tabPreview').onclick = () => setMealMode('preview');
+function setMealMode(mode){
+  mealMode = mode;
+  $('tabLogged').classList.toggle('active', mode==='logged');
+  $('tabPreview').classList.toggle('active', mode==='preview');
+  $('resultArea').innerHTML = '';
+}
+function parsePastedNutrition(text){
+  const grab = (labels) => {
+    const re = new RegExp('(?:' + labels + ')[^\\d\\n]{0,6}([\\d.]+)', 'i');
+    const m = text.match(re);
+    return m ? parseFloat(m[1]) : null;
+  };
+  const nameMatch = text.match(/(?:食物名稱|食物|品項)[\s:：]*([^\n,，]+)/);
+  return {
+    name: nameMatch ? nameMatch[1].trim() : null,
+    kcal: grab('熱量|卡路里|kcal'),
+    protein: grab('蛋白質|protein'),
+    carb: grab('碳水(?:化合物)?|carb'),
+    fat: grab('脂肪|fat'),
+  };
+}
+function applyParsedNutrition(text){
+  if(!text || !text.trim()){ $('pasteMsg').innerHTML = '<div class="msg error">還沒有內容可以解析，請先貼上文字</div>'; return; }
+  const p = parsePastedNutrition(text);
+  const filled = [];
+  if(p.name){ $('mName').value = p.name; filled.push('食物名稱'); }
+  if(p.kcal!=null){ $('mKcal').value = p.kcal; filled.push('熱量'); }
+  if(p.protein!=null){ $('mProtein').value = p.protein; filled.push('蛋白質'); }
+  if(p.carb!=null){ $('mCarb').value = p.carb; filled.push('碳水'); }
+  if(p.fat!=null){ $('mFat').value = p.fat; filled.push('脂肪'); }
+  $('pasteMsg').innerHTML = filled.length
+    ? `<div class="msg info">已自動帶入：${filled.join('、')}${filled.length<5 ? '（其餘請手動確認）' : ''}</div>`
+    : '<div class="msg error">看不出熱量等數字，請確認貼的是 Claude 給的估算結果，或直接手動輸入</div>';
+}
+$('pasteBtn').onclick = async () => {
+  try{
+    const text = await navigator.clipboard.readText();
+    $('pasteArea').value = text;
+    applyParsedNutrition(text);
+  }catch(e){
+    $('pasteMsg').innerHTML = '<div class="msg error">這個瀏覽器無法自動讀取剪貼簿，請直接長按上面欄位選「貼上」，再按「解析並帶入」</div>';
+  }
+};
+$('parseBtn').onclick = () => applyParsedNutrition($('pasteArea').value);
+
+function showResult(r){
+  const items = (r.items||[]).map(it => `<span class="item-tag">${it.name}${it.estCalories?' · '+Math.round(it.estCalories)+' kcal':''}</span>`).join('');
+  $('resultArea').innerHTML = `
+    <div class="result-card">
+      <div class="result-kcal">${Math.round(r.calories)} <span style="font-size:15px;font-weight:500;color:var(--ink-soft)">kcal</span></div>
+      ${items ? `<div style="margin-top:6px;">${items}</div>` : ''}
+      <div class="macro-row">
+        <div class="macro-chip"><div class="n">${Math.round(r.proteinG||0)}g</div><div class="l">蛋白質</div></div>
+        <div class="macro-chip"><div class="n">${Math.round(r.carbG||0)}g</div><div class="l">碳水</div></div>
+        <div class="macro-chip"><div class="n">${Math.round(r.fatG||0)}g</div><div class="l">脂肪</div></div>
+      </div>
+      ${r.note ? `<p class="hint" style="margin-top:8px;">${r.note}</p>` : ''}
+      ${mealMode==='preview' ? previewDecisionRow(r) : ''}
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-primary" id="confirmSaveBtn">${mealMode==='preview' ? '決定要吃了，加入今日紀錄' : '儲存這筆紀錄'}</button>
+      </div>
+    </div>`;
+  $('confirmSaveBtn').onclick = () => commitMeal(r);
+}
+function previewDecisionRow(r){
+  const budget = calorieBudgetToday();
+  if(!budget) return '';
+  const consumed = todaysLoggedMeals().reduce((a,m)=>a+(m.calories||0),0);
+  const remain = budget.target - consumed;
+  const after = remain - r.calories;
+  const status = after < 0 ? 'over' : after < budget.target*0.15 ? 'warn' : 'good';
+  return `<div class="msg ${status==='over'?'error':'info'}" style="margin-top:10px;">
+    今日剩餘額度 ${Math.round(remain)} kcal，吃這份之後會剩下 <b>${Math.round(after)} kcal</b>${after<0?'（超過今日額度）':''}
+  </div>`;
+}
+async function commitMeal(r){
+  const doc = {
+    date: todayStr(), ts: new Date().toISOString(), mealType: 'logged',
+    description: (r.items||[]).map(i=>i.name).join('、') || '一餐',
+    calories: Math.round(r.calories||0), proteinG: r.proteinG||0, carbG: r.carbG||0, fatG: r.fatG||0,
+    note: r.note || null,
+  };
+  await saveMeal(doc);
+  $('resultArea').innerHTML = '<div class="msg info">✓ 已加入今日紀錄</div>';
+  $('pasteArea') && ($('pasteArea').value = '');
+  $('mName').value=''; $('mKcal').value=''; $('mProtein').value=''; $('mCarb').value=''; $('mFat').value='';
+}
+
+$('manualSaveBtn').onclick = () => {
+  const name = $('mName').value.trim(), kcal = parseFloat($('mKcal').value);
+  if(!name || !(kcal>0)){ $('analyzeMsg').innerHTML = '<div class="msg error">請輸入食物名稱與熱量</div>'; return; }
+  const protein = parseFloat($('mProtein').value), carb = parseFloat($('mCarb').value), fat = parseFloat($('mFat').value);
+  showResult({
+    items:[{name, estCalories:kcal}], calories:kcal,
+    proteinG: isNaN(protein)?0:protein, carbG: isNaN(carb)?0:carb, fatG: isNaN(fat)?0:fat,
+    note:null,
+  });
+};
+
+let editingMealId = null;
+let mealPendingDelete = null;
+function renderMealHistory(){
+  const t = todayStr();
+  const todays = state.meals.filter(m=>m.date===t);
+  const rows = todays.map(m => {
+    if(m.id === editingMealId){
+      return `
+        <div class="edit-row" data-id="${m.id}">
+          <input class="ename" value="${(m.description||'').replace(/"/g,'&quot;')}">
+          <input class="ekcal" type="number" step="1" value="${m.calories}">
+          <button class="icon-btn save-meal" title="儲存">✓</button>
+          <button class="icon-btn cancel-meal" title="取消">✕</button>
+        </div>`;
+    }
+    if(m.id === mealPendingDelete){
+      return `
+        <div class="list-row" data-id="${m.id}">
+          <div><div class="main">${m.description}</div><div class="meta">${new Date(m.ts).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</div></div>
+          <div class="confirm-chip">
+            <span>確定刪除？</span>
+            <button class="yes" data-yes>刪除</button>
+            <button class="no" data-no>取消</button>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="list-row" data-id="${m.id}">
+        <div><div class="main">${m.description}</div><div class="meta">${new Date(m.ts).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</div></div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="num" style="font-weight:600;">${m.calories} kcal</div>
+          <div class="row-actions">
+            <button class="icon-btn edit-meal" title="修正這筆" aria-label="修正這筆">${ICON_EDIT}</button>
+            <button class="icon-btn danger del-meal" title="刪除這筆" aria-label="刪除這筆">${ICON_TRASH}</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  $('mealHistory').innerHTML = rows || '<div class="empty">今天還沒有紀錄</div>';
+  $('mealHistory').querySelectorAll('.edit-meal').forEach(btn => {
+    btn.onclick = () => { editingMealId = btn.closest('.list-row').dataset.id; mealPendingDelete = null; renderMealHistory(); };
+  });
+  $('mealHistory').querySelectorAll('.del-meal').forEach(btn => {
+    btn.onclick = () => { mealPendingDelete = btn.closest('.list-row').dataset.id; editingMealId = null; renderMealHistory(); };
+  });
+  $('mealHistory').querySelectorAll('[data-yes]').forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.closest('.list-row').dataset.id;
+      mealPendingDelete = null;
+      await deleteMeal(id);
+    };
+  });
+  $('mealHistory').querySelectorAll('[data-no]').forEach(btn => {
+    btn.onclick = () => { mealPendingDelete = null; renderMealHistory(); };
+  });
+  $('mealHistory').querySelectorAll('.cancel-meal').forEach(btn => {
+    btn.onclick = () => { editingMealId = null; renderMealHistory(); };
+  });
+  $('mealHistory').querySelectorAll('.save-meal').forEach(btn => {
+    btn.onclick = async () => {
+      const row = btn.closest('.edit-row');
+      const id = row.dataset.id;
+      const description = row.querySelector('.ename').value.trim();
+      const calories = parseFloat(row.querySelector('.ekcal').value);
+      if(!description || !(calories>=0)) return;
+      await updateMeal(id, {description, calories: Math.round(calories)});
+      editingMealId = null;
+    };
+  });
+}
+
+// ---------- goal view ----------
+function renderGoalView(){
+  const latest = state.weights[state.weights.length-1];
+  if(latest && !$('gCurrent').value) $('gCurrent').value = latest.weightKg;
+  if(state.goal){
+    $('gHeight').value = state.goal.heightCm; $('gAge').value = state.goal.age;
+    $('gGender').value = state.goal.gender; $('gActivity').value = state.goal.activityFactor;
+    $('gTarget').value = state.goal.targetWeightKg; $('gDate').value = state.goal.targetDate;
+    renderGoalSummary();
+  } else {
+    $('goalSummary').innerHTML = '<h2>尚未設定目標</h2><p class="hint">填寫左側表單後即可看到每日建議熱量與 BMR/TDEE 計算結果</p>';
+  }
+}
+$('saveGoalBtn').onclick = async () => {
+  const heightCm = parseFloat($('gHeight').value), age = parseFloat($('gAge').value);
+  const gender = $('gGender').value, activityFactor = parseFloat($('gActivity').value);
+  const startWeightKg = parseFloat($('gCurrent').value), targetWeightKg = parseFloat($('gTarget').value);
+  const targetDate = $('gDate').value;
+  if(!heightCm || !age || !startWeightKg || !targetWeightKg || !targetDate){
+    $('goalMsg').innerHTML = '<div class="msg error">請完整填寫身高、年齡、目前體重、目標體重與目標日期</div>'; return;
+  }
+  const days = Math.max(1, (new Date(targetDate) - new Date(todayStr())) / 86400000);
+  const weeks = days/7;
+  let weeklyRateKg = (startWeightKg - targetWeightKg) / weeks;
+  let warning = '';
+  if(weeklyRateKg > 1){
+    const neededWeeks = (startWeightKg-targetWeightKg)/1;
+    const suggested = new Date(Date.now() + neededWeeks*7*86400000);
+    warning = `<div class="msg error">目標時間偏短，換算每週需減 ${weeklyRateKg.toFixed(2)} kg，超過建議上限（每週 1kg）。建議將目標日期延後至約 ${suggested.toLocaleDateString('zh-TW')}，避免快速減重造成肌肉流失。</div>`;
+    weeklyRateKg = 1;
+  }
+  const b = bmr({weightKg:startWeightKg, heightCm, age, gender});
+  const tdee = b * activityFactor;
+  const dailyDeficit = weeklyRateKg * 7700 / 7;
+  const targetCalories = Math.max(1200, Math.round(tdee - dailyDeficit));
+  const doc = { heightCm, age, gender, activityFactor, startWeightKg, startDate: todayStr(), targetWeightKg, targetDate, weeklyRateKg, bmr: Math.round(b), tdee: Math.round(tdee), targetCalories };
+  await saveGoal(doc);
+  $('goalMsg').innerHTML = warning || '<div class="msg info">目標已儲存</div>';
+};
+function renderGoalSummary(){
+  const g = state.goal;
+  $('goalSummary').innerHTML = `
+    <h2>計算結果</h2>
+    <div class="grid grid-3" style="margin-top:10px;">
+      <div class="stat"><div class="label">BMR</div><div class="value">${g.bmr}<span class="unit">kcal</span></div></div>
+      <div class="stat"><div class="label">TDEE</div><div class="value">${g.tdee}<span class="unit">kcal</span></div></div>
+      <div class="stat"><div class="label">每日建議熱量</div><div class="value">${g.targetCalories}<span class="unit">kcal</span></div></div>
+    </div>
+    <div class="divider"></div>
+    <p class="hint">預估每週變化速度約 ${g.weeklyRateKg.toFixed(2)} kg（依 1 公斤脂肪 ≈ 7700 kcal 估算，僅供參考）。「總覽」頁面會依實際體重趨勢，動態微調每日額度 ±150 kcal。</p>
+  `;
+}
+
+// ---------- init ----------
+buildNav();
+initGoogleAuth();
+</script>
+</body>
+</html>
