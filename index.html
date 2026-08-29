@@ -287,6 +287,19 @@ svg.chart{width:100%; height:auto; display:block;}
         <p>建議在<b>早上起床後、如廁後、早餐前</b>量測，穿著盡量固定——一天內體重可能因飲水與排汗波動 1–2 公斤，早晨空腹是最穩定、最適合比較的時間點。</p>
       </div>
       <div class="card">
+        <button class="toggle-more" id="toggleInbodyPaste" type="button">📋 有 InBody 報告？貼上 Claude 給你的結果，一次帶入所有欄位</button>
+        <div id="inbodyPasteFields" style="display:none; margin:10px 0;">
+          <div class="field">
+            <label for="inbodyPasteArea">貼上 Claude 讀完 InBody 報告的結果</label>
+            <textarea id="inbodyPasteArea" placeholder="長按這裡選「貼上」，把 Claude 回覆的內容貼進來"></textarea>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-outline" id="inbodyPasteBtn" type="button">📋 自動抓取剪貼簿</button>
+            <button class="btn btn-primary" id="inbodyParseBtn" type="button">解析並帶入欄位</button>
+          </div>
+          <div id="inbodyPasteMsg"></div>
+        </div>
+        <div class="divider"></div>
         <div class="field-row">
           <div class="field"><label for="wDate">日期</label><input type="date" id="wDate"></div>
           <div class="field"><label for="wKg">體重 (kg)</label><input type="number" id="wKg" step="0.1" placeholder="例如 68.4"></div>
@@ -1005,6 +1018,52 @@ $('toggleInbody').onclick = () => {
   const el = $('inbodyFields');
   el.style.display = el.style.display==='none' ? 'block' : 'none';
 };
+$('toggleInbodyPaste').onclick = () => {
+  const el = $('inbodyPasteFields');
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+};
+function parsePastedInbody(text){
+  const grab = (labels) => {
+    const re = new RegExp('(?:' + labels + ')[^\\d\\n]{0,6}([\\d.]+)', 'i');
+    const m = text.match(re);
+    return m ? parseFloat(m[1]) : null;
+  };
+  const dm = text.match(/(\d{4})[\/\-\.\s年](\d{1,2})[\/\-\.\s月](\d{1,2})/);
+  const date = dm ? `${dm[1]}-${String(dm[2]).padStart(2,'0')}-${String(dm[3]).padStart(2,'0')}` : null;
+  return {
+    date,
+    weight: grab('體重|weight'),
+    fat: grab('體脂率|PBF'),
+    muscle: grab('骨骼肌量|SMM'),
+    fatMass: grab('體脂肪重|body ?fat ?mass'),
+    visc: grab('內臟脂肪|visceral ?fat'),
+  };
+}
+function applyParsedInbody(text){
+  if(!text || !text.trim()){ $('inbodyPasteMsg').innerHTML = '<div class="msg error">還沒有內容可以解析，請先貼上文字</div>'; return; }
+  const p = parsePastedInbody(text);
+  const filled = [];
+  if(p.date){ $('wDate').value = p.date; filled.push('日期'); }
+  if(p.weight!=null){ $('wKg').value = p.weight; filled.push('體重'); }
+  if(p.fat!=null){ $('wFat').value = p.fat; filled.push('體脂率'); }
+  if(p.muscle!=null){ $('wMuscle').value = p.muscle; filled.push('骨骼肌量'); }
+  if(p.fatMass!=null){ $('wFatMass').value = p.fatMass; filled.push('體脂肪重'); }
+  if(p.visc!=null){ $('wVisc').value = p.visc; filled.push('內臟脂肪'); }
+  if(p.fat!=null || p.muscle!=null || p.fatMass!=null || p.visc!=null) $('inbodyFields').style.display = 'block';
+  $('inbodyPasteMsg').innerHTML = filled.length
+    ? `<div class="msg info">已自動帶入：${filled.join('、')}${filled.length<6 ? '（其餘請手動確認）' : ''}</div>`
+    : '<div class="msg error">看不出數字，請確認貼的是 Claude 讀 InBody 報告的結果，或手動輸入</div>';
+}
+$('inbodyPasteBtn').onclick = async () => {
+  try{
+    const text = await navigator.clipboard.readText();
+    $('inbodyPasteArea').value = text;
+    applyParsedInbody(text);
+  }catch(e){
+    $('inbodyPasteMsg').innerHTML = '<div class="msg error">這個瀏覽器無法自動讀取剪貼簿，請直接長按上面欄位選「貼上」，再按「解析並帶入」</div>';
+  }
+};
+$('inbodyParseBtn').onclick = () => applyParsedInbody($('inbodyPasteArea').value);
 $('saveWeightBtn').onclick = async () => {
   const date = $('wDate').value || todayStr();
   const weightKg = parseFloat($('wKg').value);
