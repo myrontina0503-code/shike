@@ -347,6 +347,10 @@ svg.chart{width:100%; height:auto; display:block;}
         <button class="camera-tab" data-mode="preview" id="tabPreview">? 先看看，還沒決定</button>
       </div>
       <div class="card">
+        <div class="field" id="mealDateField">
+          <label for="mealDate">記錄日期（補登昨天／前天的也可以改這裡）</label>
+          <input type="date" id="mealDate">
+        </div>
         <div id="analyzeMsg"></div>
         <div id="manualForm" style="margin-top:0;">
           <p class="hint" style="margin-bottom:10px;">在 Claude 對話裡複製估算結果後，長按下面貼上，或按「自動抓取剪貼簿」，再按「解析並帶入」：</p>
@@ -373,7 +377,7 @@ svg.chart{width:100%; height:auto; display:block;}
       </div>
       <div style="height:14px"></div>
       <div class="card">
-        <h2>今日飲食紀錄</h2>
+        <h2 id="mealHistoryTitle">今日飲食紀錄</h2>
         <div id="mealHistory"></div>
       </div>
     </section>
@@ -472,7 +476,7 @@ function setView(id){
   document.querySelectorAll('.navbtn').forEach(el => el.classList.toggle('active', el.dataset.view === id));
   if(id === 'dashboard') renderDashboard();
   if(id === 'weight') renderWeightView();
-  if(id === 'meals') renderMealHistory();
+  if(id === 'meals'){ if(!$('mealDate').value) $('mealDate').value = todayStr(); renderMealHistory(); }
   if(id === 'goal') renderGoalView();
 }
 
@@ -1084,12 +1088,14 @@ $('saveWeightBtn').onclick = async () => {
 };
 
 // ---------- meals view ----------
+$('mealDate').onchange = () => renderMealHistory();
 $('tabLogged').onclick = () => setMealMode('logged');
 $('tabPreview').onclick = () => setMealMode('preview');
 function setMealMode(mode){
   mealMode = mode;
   $('tabLogged').classList.toggle('active', mode==='logged');
   $('tabPreview').classList.toggle('active', mode==='preview');
+  $('mealDateField').style.display = mode==='logged' ? 'flex' : 'none';
   $('resultArea').innerHTML = '';
 }
 function parsePastedNutrition(text){
@@ -1162,14 +1168,16 @@ function previewDecisionRow(r){
   </div>`;
 }
 async function commitMeal(r){
+  const date = mealMode === 'logged' ? ($('mealDate').value || todayStr()) : todayStr();
+  const ts = date === todayStr() ? new Date().toISOString() : new Date(date+'T12:00:00').toISOString();
   const doc = {
-    date: todayStr(), ts: new Date().toISOString(), mealType: 'logged',
+    date, ts, mealType: 'logged',
     description: (r.items||[]).map(i=>i.name).join('、') || '一餐',
     calories: Math.round(r.calories||0), proteinG: r.proteinG||0, carbG: r.carbG||0, fatG: r.fatG||0,
     note: r.note || null,
   };
   await saveMeal(doc);
-  $('resultArea').innerHTML = '<div class="msg info">✓ 已加入今日紀錄</div>';
+  $('resultArea').innerHTML = `<div class="msg info">✓ 已加入 ${date === todayStr() ? '今日' : date} 紀錄</div>`;
   $('pasteArea') && ($('pasteArea').value = '');
   $('mName').value=''; $('mKcal').value=''; $('mProtein').value=''; $('mCarb').value=''; $('mFat').value='';
 }
@@ -1188,7 +1196,8 @@ $('manualSaveBtn').onclick = () => {
 let editingMealId = null;
 let mealPendingDelete = null;
 function renderMealHistory(){
-  const t = todayStr();
+  const t = $('mealDate').value || todayStr();
+  $('mealHistoryTitle').textContent = t === todayStr() ? '今日飲食紀錄' : `${t} 的飲食紀錄`;
   const todays = state.meals.filter(m=>m.date===t);
   const rows = todays.map(m => {
     if(m.id === editingMealId){
